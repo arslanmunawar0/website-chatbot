@@ -1,0 +1,5 @@
+crawl4ai>=0.8.0
+sentence-transformers>=5.0.0
+torch
+qdrant-client>=1.7.0
+python-dotenv>=1.0.0

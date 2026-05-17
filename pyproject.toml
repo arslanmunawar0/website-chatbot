@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "website-chatbot"
+version = "0.1.0"
+description = "Crawl websites, chunk content, embed, and store in Qdrant"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "crawl4ai>=0.8.0",
+    "sentence-transformers>=5.0.0",
+    "torch",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+qdrant = ["qdrant-client>=1.7.0"]
+
+[project.scripts]
+ingest = "website_chatbot.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
