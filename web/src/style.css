@@ -194,6 +194,36 @@ body {
   padding-left: 20px;
 }
 
+.message.assistant .bubble li.nested {
+  margin-left: 18px;
+  list-style-type: circle;
+}
+
+.message.assistant .bubble code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(79, 70, 229, 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.message.assistant .bubble pre {
+  margin: 0 0 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #1e1b4b;
+  color: #e0e7ff;
+  overflow-x: auto;
+}
+
+.message.assistant .bubble pre code {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .cite,
 .source-number {
   display: inline-grid;

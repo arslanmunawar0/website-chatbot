@@ -6,6 +6,12 @@ Turn any website into an AI assistant that answers questions **only from the sit
 2. **Answer** — embed the question → retrieve the most relevant chunks → LangChain prompt → LLM answer with numbered citations.
 3. **Chat** — FastAPI backend + Vue 3 chat UI with a site picker, conversation history and clickable sources.
 
+Demo: the 52 pages of the [Vue.js guide](https://vuejs.org/guide/introduction.html) ingested into Qdrant Cloud (800 chunks) and answered by Gemini.
+
+![Chatting with the Vue.js docs](docs/screenshot-chat.png)
+
+![Answer with code examples and cited sources](docs/screenshot-code.png)
+
 ## Architecture
 
 ```

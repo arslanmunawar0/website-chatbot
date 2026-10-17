@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -20,13 +21,17 @@ NO_CONTEXT_ANSWER = (
 
 _SYSTEM_PROMPT = """You are a friendly support assistant for the website "{website}".
 
-Answer the user's question using ONLY the numbered context below, which was taken from the website's pages.
-- If the context does not contain the answer, say you don't know and suggest contacting the website's team. Never invent facts.
-- Be concise and use short paragraphs or bullet points.
-- Cite the pages you used with their numbers in square brackets, e.g. [1] or [2][3].
+Answer the user's question using ONLY the numbered excerpts below, which were taken from the website's pages.
+- Answer directly and naturally, as the website's own assistant. Don't mention "excerpts", "context" or "the provided documentation".
+- If the excerpts answer the question only partly, answer what they cover without adding a disclaimer.
+- Only if nothing relevant is in the excerpts, say you couldn't find that on this website. Never invent facts.
+- Be concise: short paragraphs or bullet points, and short code snippets when they help.
+- Cite the pages you used with their numbers in square brackets, e.g. [1] or [2][3]. Cite only pages you actually used.
 
 Context:
 {context}"""
+
+_CITATION = re.compile(r"\[(\d+)\]")
 
 _PROMPT = ChatPromptTemplate.from_messages(
     [
@@ -67,7 +72,7 @@ class WebsiteAnswerer:
         vector_store: VectorStore,
         llm: BaseChatModel,
         *,
-        top_k: int = 5,
+        top_k: int = 8,
     ) -> None:
         self.embedder = embedder
         self.vector_store = vector_store
@@ -94,7 +99,9 @@ class WebsiteAnswerer:
                 "question": question,
             }
         )
-        return Answer(text=text.strip(), sources=sources)
+        text = text.strip()
+        cited = {int(number) for number in _CITATION.findall(text)}
+        return Answer(text=text, sources=[s for s in sources if s.number in cited])
 
 
 def _number_sources(chunks: list[RetrievedChunk]) -> tuple[list[Source], str]:

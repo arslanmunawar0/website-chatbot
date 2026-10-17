@@ -20,13 +20,18 @@ class SentenceTransformerEmbedder(BaseEmbedder):
 
     @property
     def vector_dimensions(self) -> int:
-        return int(self._model.get_sentence_embedding_dimension())
+        get_dimension = getattr(
+            self._model,
+            "get_embedding_dimension",
+            self._model.get_sentence_embedding_dimension,
+        )
+        return int(get_dimension())
 
     def embed(self, chunks: list[TextChunk]) -> list[EmbeddedChunk]:
         if not chunks:
             return []
 
-        texts = [chunk.text for chunk in chunks]
+        texts = [with_title(chunk) for chunk in chunks]
         vectors = self._model.encode(
             texts,
             batch_size=self.config.batch_size,
@@ -49,3 +54,8 @@ class SentenceTransformerEmbedder(BaseEmbedder):
             normalize_embeddings=self.config.normalize_embeddings,
         )
         return vector.tolist()
+
+
+def with_title(chunk: TextChunk) -> str:
+    """Prefix the page title so chunks without their own heading still embed with their topic."""
+    return f"{chunk.title}\n\n{chunk.text}" if chunk.title else chunk.text

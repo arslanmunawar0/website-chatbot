@@ -45,7 +45,8 @@ class Crawl4AICrawler(BaseCrawler):
     def _build_run_config(self) -> CrawlerRunConfig:
         kwargs: dict[str, Any] = {"verbose": self.config.verbose}
         if self.config.css_selector:
-            kwargs["css_selector"] = self.config.css_selector
+            # css_selector discards <head>, losing page titles; target_elements keeps them.
+            kwargs["target_elements"] = [self.config.css_selector]
         if self.config.deep_crawl:
             kwargs["deep_crawl_strategy"] = BFSDeepCrawlStrategy(
                 max_depth=self.config.max_depth,

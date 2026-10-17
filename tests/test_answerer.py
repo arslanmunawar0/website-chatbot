@@ -10,7 +10,7 @@ from website_chatbot.qa.answerer import NO_CONTEXT_ANSWER, _number_sources
 from conftest import SHIPPING_CHUNKS
 
 
-def test_answer_returns_llm_text_and_deduplicated_sources(embedder, store, llm):
+def test_answer_returns_llm_text_and_only_cited_sources(embedder, store, llm):
     answerer = WebsiteAnswerer(embedder, store, llm, top_k=3)
 
     answer = asyncio.run(answerer.answer("shop", "How fast do you ship?"))
@@ -18,10 +18,29 @@ def test_answer_returns_llm_text_and_deduplicated_sources(embedder, store, llm):
     assert answer.text == "Orders ship within 2 business days [1]."
     assert answer.sources == [
         Source(number=1, title="Shipping", url="https://shop.example/shipping"),
-        Source(number=2, title="Returns", url="https://shop.example/returns"),
     ]
     assert embedder.queries == ["How fast do you ship?"]
     assert store.searches == [("shop", [0.1, 0.2, 0.3], 3)]
+
+
+def test_sources_keep_their_numbers_when_only_later_ones_are_cited(embedder, store):
+    llm = FakeListChatModel(responses=["Returns are accepted within 30 days [2]."])
+    answerer = WebsiteAnswerer(embedder, store, llm)
+
+    answer = asyncio.run(answerer.answer("shop", "Can I return items?"))
+
+    assert answer.sources == [
+        Source(number=2, title="Returns", url="https://shop.example/returns"),
+    ]
+
+
+def test_answer_without_citations_has_no_sources(embedder, store):
+    llm = FakeListChatModel(responses=["I couldn't find that on this website."])
+    answerer = WebsiteAnswerer(embedder, store, llm)
+
+    answer = asyncio.run(answerer.answer("shop", "What is the capital of France?"))
+
+    assert answer.sources == []
 
 
 def test_answer_without_context_skips_llm(embedder, store):

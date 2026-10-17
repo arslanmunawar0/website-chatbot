@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { askQuestion, fetchSites } from './api'
-import { formatAnswer } from './formatAnswer'
+import { formatAnswer, siteLabel } from './formatAnswer'
 
 const MAX_HISTORY_MESSAGES = 10
 
@@ -16,9 +16,9 @@ const scroller = ref(null)
 const canSend = computed(() => site.value && draft.value.trim() && !loading.value)
 
 const suggestions = [
-  'What does this website offer?',
-  'How can I contact support?',
-  'What are the opening hours or delivery times?',
+  'What is this website about?',
+  'How do I get started?',
+  'What are the key features?',
 ]
 
 onMounted(async () => {
@@ -87,14 +87,14 @@ function onKeydown(event) {
         <label class="site-picker">
           <span>Website</span>
           <select v-model="site" :disabled="!sites.length">
-            <option v-for="name in sites" :key="name" :value="name">{{ name }}</option>
+            <option v-for="name in sites" :key="name" :value="name">{{ siteLabel(name) }}</option>
           </select>
         </label>
       </header>
 
       <section ref="scroller" class="messages" aria-live="polite">
         <div v-if="!messages.length" class="empty">
-          <h2>Ask anything about <strong>{{ site || 'a website' }}</strong></h2>
+          <h2>Ask anything about <strong>{{ site ? siteLabel(site) : 'a website' }}</strong></h2>
           <p>The assistant searches the crawled pages and cites where each answer comes from.</p>
           <div class="suggestions">
             <button
