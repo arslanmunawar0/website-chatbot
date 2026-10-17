@@ -4,7 +4,7 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from website_chatbot.config import QdrantConfig
-from website_chatbot.models import EmbeddedChunk
+from website_chatbot.models import EmbeddedChunk, RetrievedChunk
 from website_chatbot.storage.base import VectorStore
 
 _UPSERT_BATCH_SIZE = 64
@@ -52,6 +52,35 @@ class QdrantVectorStore(VectorStore):
             written += len(batch)
 
         return written
+
+    async def search(
+        self, collection: str, vector: list[float], limit: int
+    ) -> list[RetrievedChunk]:
+        if self._client is None:
+            raise RuntimeError("Call connect() before search()")
+
+        response = await self._client.query_points(
+            collection_name=collection,
+            query=vector,
+            limit=limit,
+            with_payload=True,
+        )
+        return [
+            RetrievedChunk(
+                text=(point.payload or {}).get("text", ""),
+                source_url=(point.payload or {}).get("source_url", ""),
+                title=(point.payload or {}).get("title", ""),
+                score=point.score,
+            )
+            for point in response.points
+        ]
+
+    async def list_collections(self) -> list[str]:
+        if self._client is None:
+            raise RuntimeError("Call connect() before list_collections()")
+
+        response = await self._client.get_collections()
+        return sorted(collection.name for collection in response.collections)
 
     async def close(self) -> None:
         if self._client is not None:

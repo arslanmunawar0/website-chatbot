@@ -1,0 +1,9 @@
+{
+  "example": {
+    "parent": "https://example.com",
+    "children": [
+      "https://example.com/about",
+      "https://example.com/faq"
+    ]
+  }
+}

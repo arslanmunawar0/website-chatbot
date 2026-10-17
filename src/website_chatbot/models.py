@@ -54,3 +54,13 @@ class EmbeddedChunk:
                 if k not in {"website"}
             },
         }
+
+
+@dataclass(frozen=True, slots=True)
+class RetrievedChunk:
+    """A stored chunk returned by a similarity search."""
+
+    text: str
+    source_url: str
+    title: str
+    score: float

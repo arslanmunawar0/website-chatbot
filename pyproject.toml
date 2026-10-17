@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "website-chatbot"
 version = "0.1.0"
-description = "Crawl websites, chunk content, embed, and store in Qdrant"
+description = "Crawl websites into Qdrant and chat with them through a RAG API and Vue UI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,10 +16,20 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-qdrant = ["qdrant-client>=1.7.0"]
+qdrant = ["qdrant-client>=1.10.0"]
+api = [
+    "qdrant-client>=1.10.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "langchain>=0.3.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
+]
+dev = ["pytest>=8.0", "httpx>=0.27"]
 
 [project.scripts]
 ingest = "website_chatbot.cli:main"
+chatbot-api = "website_chatbot.api:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]

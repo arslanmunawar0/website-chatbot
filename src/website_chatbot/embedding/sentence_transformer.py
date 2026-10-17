@@ -42,3 +42,10 @@ class SentenceTransformerEmbedder(BaseEmbedder):
             )
             for chunk, vector in zip(chunks, vectors, strict=True)
         ]
+
+    def embed_query(self, text: str) -> list[float]:
+        vector = self._model.encode(
+            text,
+            normalize_embeddings=self.config.normalize_embeddings,
+        )
+        return vector.tolist()

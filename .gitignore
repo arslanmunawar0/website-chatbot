@@ -1,8 +1,15 @@
 venv/
+.venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .env
-*.json
+websites.json
+data/
 .pytest_cache/
 .mypy_cache/
 .DS_Store
+
+# Frontend
+web/node_modules/
+web/dist/

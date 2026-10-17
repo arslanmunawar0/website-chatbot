@@ -71,11 +71,22 @@ class QdrantConfig:
 
 
 @dataclass(slots=True)
+class ChatConfig:
+    llm_model: str = "openai:gpt-4o-mini"
+    temperature: float = 0.0
+    top_k: int = 5
+    cors_origins: list[str] = field(
+        default_factory=lambda: ["http://localhost:5173"]
+    )
+
+
+@dataclass(slots=True)
 class Settings:
     crawler: CrawlerConfig = field(default_factory=CrawlerConfig)
     chunker: ChunkerConfig = field(default_factory=ChunkerConfig)
     embedder: EmbedderConfig = field(default_factory=EmbedderConfig)
     qdrant: QdrantConfig = field(default_factory=QdrantConfig)
+    chat: ChatConfig = field(default_factory=ChatConfig)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -112,5 +123,17 @@ class Settings:
                     else None
                 ),
                 recreate_collection=_env_bool("QDRANT_RECREATE_COLLECTION", False),
+            ),
+            chat=ChatConfig(
+                llm_model=os.getenv("LLM_MODEL", "openai:gpt-4o-mini"),
+                temperature=float(os.getenv("LLM_TEMPERATURE", "0")),
+                top_k=_env_int("RETRIEVAL_TOP_K", 5),
+                cors_origins=[
+                    origin.strip()
+                    for origin in os.getenv(
+                        "CORS_ORIGINS", "http://localhost:5173"
+                    ).split(",")
+                    if origin.strip()
+                ],
             ),
         )

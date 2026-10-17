@@ -1,60 +1,68 @@
-# Website Chatbot — Ingestion Pipeline
+# Website Chatbot — RAG over any website
 
-Crawl websites → split into chunks → embed with sentence-transformers → store in Qdrant.
+Turn any website into an AI assistant that answers questions **only from the site's own pages** and **cites its sources**.
 
-## Project layout
+1. **Ingest** — crawl pages (Crawl4AI) → split into chunks → embed (BGE-M3, sentence-transformers) → store in Qdrant, one collection per website.
+2. **Answer** — embed the question → retrieve the most relevant chunks → LangChain prompt → LLM answer with numbered citations.
+3. **Chat** — FastAPI backend + Vue 3 chat UI with a site picker, conversation history and clickable sources.
+
+## Architecture
+
+```
+            ingest (CLI / main.py)                         chat
+ ┌──────────┐   ┌─────────┐   ┌──────────┐        ┌───────────────┐
+ │ Crawl4AI │ → │ Chunker │ → │ Embedder │ ──┐    │ Vue 3 chat UI │
+ └──────────┘   └─────────┘   └──────────┘   │    └──────┬────────┘
+                                             ▼           │ POST /api/chat
+                                        ┌────────┐  ┌────▼─────────────┐   ┌─────┐
+                                        │ Qdrant │◄─│ FastAPI + RAG    │ → │ LLM │
+                                        └────────┘  │ (LangChain)      │   └─────┘
+                                                    └──────────────────┘
+```
 
 ```
 src/website_chatbot/
-├── config.py          # Settings (env vars)
-├── models.py          # Document, TextChunk, EmbeddedChunk
+├── config.py          # Settings from env vars
+├── models.py          # Document, TextChunk, EmbeddedChunk, RetrievedChunk
 ├── pipeline.py        # Orchestrates crawl → chunk → embed
 ├── crawler/           # Crawl4AI implementation (+ base interface)
 ├── chunking/          # Recursive text splitter (+ base interface)
 ├── embedding/         # Sentence-transformers (+ base interface)
-└── storage/           # VectorStore + QdrantVectorStore
-scripts/ingest.py      # CLI
+├── storage/           # VectorStore + QdrantVectorStore (upsert, search)
+├── qa/                # WebsiteAnswerer: retrieval + LangChain prompt + citations
+└── api.py             # FastAPI app: /api/sites, /api/chat
+web/                   # Vue 3 + Vite chat UI
+tests/                 # pytest suite (fake LLM/embedder + in-memory Qdrant)
 ```
+
+Every stage sits behind an interface, so the crawler, chunker, embedder, vector store or LLM can be swapped independently.
 
 ## Setup
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install -e .
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[api,dev]"
+cp .env.example .env    # add your Qdrant URL/API key and LLM API key
 ```
 
-Start Qdrant locally (Docker):
+Run Qdrant locally (or use Qdrant Cloud):
 
 ```bash
 docker run -p 6333:6333 qdrant/qdrant
 ```
 
-## Usage
-
-### Easiest: `python main.py`
-
-1. Copy `websites.example.json` → `websites.json` and add your sites.
-2. Configure `.env` (Qdrant URL, API key, etc.).
-3. Run:
+## 1. Ingest a website
 
 ```bash
+cp websites.example.json websites.json   # add your sites
 python main.py
 ```
 
-This runs **crawl → chunk → embed → Qdrant** automatically (reads `websites.json` + `.env`).
-
-**`websites.json` format** (website name → parent + child links):
+`websites.json` maps a website name to a parent page and child links. Each name becomes a Qdrant collection:
 
 ```json
 {
-  "bbc": {
-    "parent": "https://help.bbc.com/hc/en-us",
-    "children": [
-      "https://help.bbc.com/hc/en-us/articles/getting-started",
-      "https://help.bbc.com/hc/en-us/articles/account-help"
-    ]
-  },
   "example": {
     "parent": "https://example.com",
     "children": ["https://example.com/about", "https://example.com/faq"]
@@ -62,48 +70,45 @@ This runs **crawl → chunk → embed → Qdrant** automatically (reads `website
 }
 ```
 
-Each key becomes a Qdrant collection (`bbc`, `example`, …).
-
-**Or use the `ingest` CLI** for one-off flags:
-
-**Crawl, embed, and save to JSON:**
-
-```bash
-ingest --urls https://example.com --output data/embeddings.json --verbose
-```
-
-**Crawl, embed, and upsert into Qdrant** (collection name = website name, e.g. `example_com`):
+For one-off runs, use the `ingest` CLI:
 
 ```bash
 ingest --urls https://example.com --qdrant --verbose
+ingest --site docs --urls https://docs.example.com --deep-crawl --css-selector main --qdrant
+ingest --urls https://example.com --output data/embeddings.json   # save to JSON instead
 ```
 
-**Explicit website name** (collection `bbc`):
+## 2. Start the chat API
 
 ```bash
-ingest --site bbc --urls https://help.bbc.com/hc/en-us --qdrant --verbose
+chatbot-api            # http://127.0.0.1:8000, docs at /docs
 ```
 
-**Multiple websites** from JSON:
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/sites` | Websites (collections) available to chat with |
+| `POST /api/chat` | `{ "site", "question", "history" }` → `{ "answer", "sources" }` |
+| `GET /api/health` | Liveness check |
+
+The LLM is configured with `LLM_MODEL` as `provider:model` (default `openai:gpt-4o-mini`). Any provider supported by LangChain's `init_chat_model` works once its package is installed.
+
+## 3. Run the chat UI
 
 ```bash
-ingest --websites-file websites.json --qdrant --verbose
+cd web
+npm install
+npm run dev            # http://localhost:5173, proxies /api to the backend
 ```
 
-**Deep crawl + Qdrant (replace collection first):**
+For a single-server deployment, run `npm run build`. The API then serves the UI from `web/dist` at `/`.
+
+## Tests
 
 ```bash
-ingest \
-  --urls https://help.bbc.com/hc/en-us \
-  --deep-crawl \
-  --css-selector main \
-  --url-contains /articles/ \
-  --qdrant \
-  --qdrant-recreate \
-  --verbose
+pytest
 ```
 
-**Config:** copy `.env.example` to `.env`, add your real Qdrant URL and API key in `.env` only (never commit `.env`). The CLI loads `.env` automatically on startup.
+The suite covers retrieval, prompt construction, citation numbering, the HTTP API and the Qdrant store (in-memory). It needs no API keys, GPU or running Qdrant.
 
 ## Extending
 
@@ -113,3 +118,4 @@ ingest \
 | Chunk | `BaseChunker` |
 | Embed | `BaseEmbedder` |
 | Store | `VectorStore` |
+| Answer | any LangChain `BaseChatModel` |
