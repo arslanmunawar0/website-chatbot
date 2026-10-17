@@ -151,9 +151,10 @@ def _default_embedder(settings: Settings) -> BaseEmbedder:
 def _default_llm(settings: Settings) -> BaseChatModel:
     from langchain.chat_models import init_chat_model
 
-    return init_chat_model(
-        settings.chat.llm_model, temperature=settings.chat.temperature
-    )
+    kwargs = {}
+    if settings.chat.temperature is not None:
+        kwargs["temperature"] = settings.chat.temperature
+    return init_chat_model(settings.chat.llm_model, **kwargs)
 
 
 def run() -> None:

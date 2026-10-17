@@ -73,7 +73,7 @@ class QdrantConfig:
 @dataclass(slots=True)
 class ChatConfig:
     llm_model: str = "google_genai:gemini-3.5-flash-lite"
-    temperature: float = 0.0
+    temperature: float | None = None
     top_k: int = 5
     cors_origins: list[str] = field(
         default_factory=lambda: ["http://localhost:5173"]
@@ -126,7 +126,11 @@ class Settings:
             ),
             chat=ChatConfig(
                 llm_model=os.getenv("LLM_MODEL", "google_genai:gemini-3.5-flash-lite"),
-                temperature=float(os.getenv("LLM_TEMPERATURE", "0")),
+                temperature=(
+                    float(os.environ["LLM_TEMPERATURE"])
+                    if os.getenv("LLM_TEMPERATURE")
+                    else None
+                ),
                 top_k=_env_int("RETRIEVAL_TOP_K", 5),
                 cors_origins=[
                     origin.strip()
