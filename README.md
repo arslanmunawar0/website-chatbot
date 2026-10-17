@@ -43,7 +43,7 @@ Every stage sits behind an interface, so the crawler, chunker, embedder, vector 
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[api,dev]"
-cp .env.example .env    # add your Qdrant URL/API key and LLM API key
+cp .env.example .env    # add your Qdrant settings and Gemini API key
 ```
 
 Run Qdrant locally (or use Qdrant Cloud):
@@ -90,7 +90,16 @@ chatbot-api            # http://127.0.0.1:8000, docs at /docs
 | `POST /api/chat` | `{ "site", "question", "history" }` → `{ "answer", "sources" }` |
 | `GET /api/health` | Liveness check |
 
-The LLM is configured with `LLM_MODEL` as `provider:model` (default `openai:gpt-4o-mini`). Any provider supported by LangChain's `init_chat_model` works once its package is installed.
+### LLM
+
+By default the chatbot uses **Google Gemini** (`google_genai:gemini-3.5-flash-lite`), which works with a free-tier API key:
+
+1. Create a key at [Google AI Studio](https://aistudio.google.com/apikey).
+2. Set `GEMINI_API_KEY` in `.env`.
+
+Switch models with `LLM_MODEL` as `provider:model`, e.g. `google_genai:gemini-3.8-flash` (also on the free tier) or `openai:gpt-4o-mini` (with `OPENAI_API_KEY`). Any provider supported by LangChain's `init_chat_model` works once its package is installed.
+
+On the free tier, Google may use prompts to improve its products, and requests are rate-limited per project. If the limit is hit, `/api/chat` returns `503` with a "try again in a minute" message, which the UI displays.
 
 ## 3. Run the chat UI
 

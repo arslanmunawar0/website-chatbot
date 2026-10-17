@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import pytest
 from fastapi.testclient import TestClient
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-from website_chatbot.api import create_app
+from website_chatbot.api import LLM_UNAVAILABLE, create_app
 from website_chatbot.config import Settings
 
 
@@ -48,6 +49,25 @@ def test_chat_rejects_empty_question(client):
     response = client.post("/api/chat", json={"site": "shop", "question": ""})
 
     assert response.status_code == 422
+
+
+def test_llm_failure_returns_friendly_503(embedder, store):
+    class RateLimitedLLM(FakeListChatModel):
+        def _call(self, *args, **kwargs):
+            raise RuntimeError("429 RESOURCE_EXHAUSTED")
+
+    app = create_app(
+        settings=Settings(), embedder=embedder, vector_store=store, llm=RateLimitedLLM(responses=[])
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/chat", json={"site": "shop", "question": "Hi"})
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == LLM_UNAVAILABLE
+
+
+def test_default_llm_is_gemini():
+    assert Settings().chat.llm_model == "google_genai:gemini-3.5-flash-lite"
 
 
 def test_vector_store_is_closed_on_shutdown(embedder, store, llm):

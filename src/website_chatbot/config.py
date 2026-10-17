@@ -72,7 +72,7 @@ class QdrantConfig:
 
 @dataclass(slots=True)
 class ChatConfig:
-    llm_model: str = "openai:gpt-4o-mini"
+    llm_model: str = "google_genai:gemini-3.5-flash-lite"
     temperature: float = 0.0
     top_k: int = 5
     cors_origins: list[str] = field(
@@ -125,7 +125,7 @@ class Settings:
                 recreate_collection=_env_bool("QDRANT_RECREATE_COLLECTION", False),
             ),
             chat=ChatConfig(
-                llm_model=os.getenv("LLM_MODEL", "openai:gpt-4o-mini"),
+                llm_model=os.getenv("LLM_MODEL", "google_genai:gemini-3.5-flash-lite"),
                 temperature=float(os.getenv("LLM_TEMPERATURE", "0")),
                 top_k=_env_int("RETRIEVAL_TOP_K", 5),
                 cors_origins=[

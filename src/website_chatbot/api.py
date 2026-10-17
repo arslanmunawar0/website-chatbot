@@ -10,6 +10,7 @@ Run with:  chatbot-api   (or: uvicorn website_chatbot.api:create_app --factory -
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -27,6 +28,12 @@ from website_chatbot.qa import ChatTurn, WebsiteAnswerer
 from website_chatbot.storage.base import VectorStore
 
 WEB_DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
+LLM_UNAVAILABLE = (
+    "The AI model is temporarily unavailable (it may be rate-limited). "
+    "Please try again in a minute."
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ChatMessage(BaseModel):
@@ -104,11 +111,15 @@ def create_app(
         if body.site not in sites:
             raise HTTPException(status_code=404, detail=f"Unknown site: {body.site}")
 
-        answer = await request.app.state.answerer.answer(
-            body.site,
-            body.question,
-            [ChatTurn(role=m.role, content=m.content) for m in body.history],
-        )
+        try:
+            answer = await request.app.state.answerer.answer(
+                body.site,
+                body.question,
+                [ChatTurn(role=m.role, content=m.content) for m in body.history],
+            )
+        except Exception:
+            logger.exception("Answering failed for site %s", body.site)
+            raise HTTPException(status_code=503, detail=LLM_UNAVAILABLE) from None
         return ChatResponse(
             answer=answer.text,
             sources=[
